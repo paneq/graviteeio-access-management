@@ -17,12 +17,16 @@ package io.gravitee.am.gateway.handler.vertx.handler.root.endpoint.user;
 
 import com.google.common.net.HttpHeaders;
 import io.gravitee.am.gateway.handler.vertx.utils.UriBuilderRequest;
+import io.gravitee.am.identityprovider.api.DefaultUser;
+import io.gravitee.am.identityprovider.api.User;
 import io.vertx.core.Handler;
+import io.vertx.reactivex.core.http.HttpServerRequest;
 import io.vertx.reactivex.core.http.HttpServerResponse;
 import io.vertx.reactivex.ext.web.RoutingContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -49,7 +53,37 @@ public abstract class UserRequestHandler implements Handler<RoutingContext> {
         }
     }
 
+    protected User getAuthenticatedUser(RoutingContext routingContext) {
+        io.gravitee.am.model.User user = routingContext.get("user");
+        if (user != null) {
+            User authenticatedUser = new DefaultUser(user.getUsername());
+            Map<String, Object> additionalInformation = new HashMap<>(user.getAdditionalInformation());
+            // add ip address and user agent
+            additionalInformation.put("ipAddress", getClientIp(routingContext.request()));
+            additionalInformation.put("userAgent", getUserAgent(routingContext.request()));
+            ((DefaultUser) authenticatedUser).setAdditionalInformation(additionalInformation);
+            return authenticatedUser;
+        }
+        return null;
+    }
+
     private void doRedirect(HttpServerResponse response, String url) {
         response.putHeader(HttpHeaders.LOCATION, url).setStatusCode(302).end();
+    }
+
+    protected String getClientIp(HttpServerRequest request) {
+        String remoteAddress = null;
+
+        if (request != null) {
+            remoteAddress = request.getHeader(io.gravitee.common.http.HttpHeaders.X_FORWARDED_HOST);
+            if (remoteAddress == null || remoteAddress.isEmpty()) {
+                remoteAddress = request.remoteAddress().host();
+            }
+        }
+        return remoteAddress;
+    }
+
+    protected String getUserAgent(HttpServerRequest request) {
+        return request.getHeader(io.gravitee.common.http.HttpHeaders.USER_AGENT);
     }
 }

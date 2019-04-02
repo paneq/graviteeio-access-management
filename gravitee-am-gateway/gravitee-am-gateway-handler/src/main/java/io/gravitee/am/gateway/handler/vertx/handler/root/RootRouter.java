@@ -34,6 +34,7 @@ import io.gravitee.am.gateway.handler.vertx.handler.root.endpoint.user.UserToken
 import io.gravitee.am.gateway.handler.vertx.handler.root.endpoint.user.password.*;
 import io.gravitee.am.gateway.handler.vertx.handler.root.endpoint.user.register.*;
 import io.gravitee.am.model.Domain;
+import io.gravitee.am.service.AuditService;
 import io.gravitee.am.service.authentication.crypto.password.PasswordValidator;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpMethod;
@@ -76,6 +77,9 @@ public class RootRouter {
     @Autowired
     private PasswordValidator passwordValidator;
 
+    @Autowired
+    private AuditService auditService;
+
     public Router route(AuthProvider userAuthProvider) {
         // create the root router
         final Router router = Router.router(vertx);
@@ -116,7 +120,7 @@ public class RootRouter {
                 .handler(new LoginCallbackEndpointHandler());
 
         // logout route
-        router.route("/logout").handler(LogoutEndpointHandler.create());
+        router.route("/logout").handler(LogoutEndpointHandler.create(domain, auditService));
 
         // error route
         router.route(HttpMethod.GET, "/error")

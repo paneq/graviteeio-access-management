@@ -15,6 +15,7 @@
  */
 package io.gravitee.am.management.handlers.admin.provider.security;
 
+import io.gravitee.am.management.handlers.admin.authentication.WebAuthenticationDetails;
 import io.gravitee.am.management.handlers.admin.security.IdentityProviderManager;
 import io.gravitee.am.model.Domain;
 import org.slf4j.Logger;
@@ -53,8 +54,10 @@ public class DomainBasedAuthenticationProvider implements AuthenticationProvider
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
-
-        Map<String, String> details = new HashMap<>();
+        WebAuthenticationDetails webAuthenticationDetails = (WebAuthenticationDetails) authentication.getDetails();
+        Map<String, String> details = new HashMap();
+        details.put("ipAddress", webAuthenticationDetails.getRemoteAddress());
+        details.put("userAgent", webAuthenticationDetails.getUserAgent());
         Set<String> identities = domain.getIdentities();
         Iterator<String> iter = identities.iterator();
         io.gravitee.am.identityprovider.api.User user = null;

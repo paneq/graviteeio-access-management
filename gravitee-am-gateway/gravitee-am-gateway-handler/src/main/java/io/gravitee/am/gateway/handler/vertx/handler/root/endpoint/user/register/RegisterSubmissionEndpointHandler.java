@@ -17,6 +17,7 @@ package io.gravitee.am.gateway.handler.vertx.handler.root.endpoint.user.register
 
 import io.gravitee.am.gateway.handler.user.UserService;
 import io.gravitee.am.gateway.handler.vertx.handler.root.endpoint.user.UserRequestHandler;
+import io.gravitee.am.identityprovider.api.DefaultUser;
 import io.gravitee.am.model.User;
 import io.gravitee.am.service.exception.UserAlreadyExistsException;
 import io.vertx.reactivex.core.MultiMap;
@@ -50,7 +51,7 @@ public class RegisterSubmissionEndpointHandler extends UserRequestHandler {
             queryParams.put(CLIENT_ID_PARAM, context.request().getParam(CLIENT_ID_PARAM));
         }
 
-        userService.register(convert(params))
+        userService.register(convert(params), getAuthenticatedUser(context))
                 .subscribe(
                         user -> {
                             queryParams.put(SUCCESS_PARAM, "registration_succeed");
@@ -68,6 +69,17 @@ public class RegisterSubmissionEndpointHandler extends UserRequestHandler {
 
     }
 
+    @Override
+    protected io.gravitee.am.identityprovider.api.User getAuthenticatedUser(RoutingContext routingContext) {
+        // override principal user
+        io.gravitee.am.identityprovider.api.User principal = new DefaultUser(routingContext.request().getParam("username"));
+        Map<String, Object> additionalInformation = new HashMap<>();
+        additionalInformation.put("ipAddress", getClientIp(routingContext.request()));
+        additionalInformation.put("userAgent", getUserAgent(routingContext.request()));
+        ((DefaultUser) principal).setAdditionalInformation(additionalInformation);
+        return principal;
+    }
+
     private User convert(MultiMap params) {
         User user = new User();
         user.setUsername(params.get("username"));
@@ -75,6 +87,7 @@ public class RegisterSubmissionEndpointHandler extends UserRequestHandler {
         user.setLastName(params.get("lastName"));
         user.setEmail(params.get("email"));
         user.setPassword(params.get("password"));
+        user.setClient(params.get("client_id"));
 
         return user;
 

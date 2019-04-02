@@ -21,6 +21,7 @@ import io.gravitee.am.gateway.handler.oauth2.client.ClientSyncService;
 import io.gravitee.am.gateway.handler.oauth2.exception.InvalidRequestException;
 import io.gravitee.am.gateway.handler.oauth2.exception.ServerErrorException;
 import io.gravitee.am.gateway.handler.oauth2.utils.OAuth2Constants;
+import io.gravitee.am.identityprovider.api.Authentication;
 import io.gravitee.am.model.Client;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -31,6 +32,9 @@ import io.vertx.ext.auth.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * @author Titouan COMPIEGNE (titouan.compiegne at graviteesource.com)
  * @author GraviteeSource Team
@@ -40,6 +44,8 @@ public class UserAuthenticationProvider implements AuthProvider {
     private final static Logger logger = LoggerFactory.getLogger(UserAuthenticationProvider.class);
     private final static String USERNAME_PARAMETER = "username";
     private final static String PASSWORD_PARAMETER = "password";
+    private final static String IP_ADDRESS_PARAMETER = "ipAddress";
+    private final static String USER_AGENT_PARAMETER = "userAgent";
     private UserAuthenticationManager userAuthenticationManager;
     private ClientSyncService clientSyncService;
 
@@ -55,6 +61,8 @@ public class UserAuthenticationProvider implements AuthProvider {
         String username = authInfo.getString(USERNAME_PARAMETER);
         String password = authInfo.getString(PASSWORD_PARAMETER);
         String clientId = authInfo.getString(OAuth2Constants.CLIENT_ID);
+        String ipAddress = authInfo.getString(IP_ADDRESS_PARAMETER);
+        String userAgent = authInfo.getString(USER_AGENT_PARAMETER);
 
         parseClient(clientId, parseClientHandler -> {
             if (parseClientHandler.failed()) {
@@ -64,7 +72,14 @@ public class UserAuthenticationProvider implements AuthProvider {
             }
 
             final Client client = parseClientHandler.result();
-            userAuthenticationManager.authenticate(client, new EndUserAuthentication(username, password))
+
+            final Authentication authentication = new EndUserAuthentication(username, password);
+            Map<String, Object> additionalInformation = new HashMap();
+            additionalInformation.put(IP_ADDRESS_PARAMETER, ipAddress);
+            additionalInformation.put(USER_AGENT_PARAMETER, userAgent);
+            ((EndUserAuthentication) authentication).setAdditionalInformation(additionalInformation);
+
+            userAuthenticationManager.authenticate(client, authentication)
                     .subscribe(
                             user -> resultHandler.handle(Future.succeededFuture(new io.gravitee.am.gateway.handler.vertx.auth.user.User(user))),
                             error -> resultHandler.handle(Future.failedFuture(error))

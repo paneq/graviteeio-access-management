@@ -19,6 +19,7 @@ import io.gravitee.am.management.handlers.management.api.certificate.Certificate
 import io.gravitee.am.management.service.*;
 import io.gravitee.am.plugins.certificate.core.CertificatePluginManager;
 import io.gravitee.am.service.*;
+import io.gravitee.am.service.AuditService;
 import io.gravitee.am.service.authentication.crypto.password.PasswordValidator;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTest;
@@ -104,6 +105,9 @@ public abstract class JerseySpringTest {
 
     @Autowired
     protected ScopeApprovalService scopeApprovalService;
+
+    @Autowired
+    protected AuditService auditService;
 
     @Configuration
     @ComponentScan("io.gravitee.am.management.handlers.management.api.resources.enhancer")
@@ -206,6 +210,11 @@ public abstract class JerseySpringTest {
         @Bean
         public ScopeApprovalService scopeApprovalService() {
             return mock(ScopeApprovalService.class);
+        }
+
+        @Bean
+        public AuditService auditService() {
+            return mock(AuditService.class);
         }
     }
 

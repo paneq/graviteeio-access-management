@@ -33,13 +33,13 @@ public interface UserService {
 
     Maybe<UserToken> verifyToken(String token);
 
-    Single<User> register(User user);
+    Single<User> register(User user, io.gravitee.am.identityprovider.api.User principal);
 
-    Completable confirmRegistration(User user);
+    Completable confirmRegistration(User user, io.gravitee.am.identityprovider.api.User principal);
 
-    Completable resetPassword(User user);
+    Completable resetPassword(User user, io.gravitee.am.identityprovider.api.User principal);
 
-    Completable forgotPassword(String email, Client client);
+    Completable forgotPassword(String email, Client client, io.gravitee.am.identityprovider.api.User principal);
 
     Single<Set<ScopeApproval>> consents(String userId);
 
@@ -52,4 +52,20 @@ public interface UserService {
     Completable revokeConsents(String userId);
 
     Completable revokeConsents(String userId, String clientId);
+
+    default Single<User> register(User user) {
+        return register(user, null);
+    }
+
+    default Completable resetPassword(User user) {
+        return resetPassword(user, null);
+    }
+
+    default Completable forgotPassword(String email, Client client) {
+        return forgotPassword(email, client, null);
+    }
+
+    default Completable confirmRegistration(User user) {
+        return confirmRegistration(user, null);
+    }
 }

@@ -15,9 +15,9 @@
  */
 package io.gravitee.am.gateway.handler.vertx.auth.handler.impl;
 
-import com.google.common.net.HttpHeaders;
 import io.gravitee.am.gateway.handler.oauth2.utils.OAuth2Constants;
 import io.gravitee.am.gateway.handler.vertx.utils.UriBuilderRequest;
+import io.gravitee.common.http.HttpHeaders;
 import io.vertx.core.MultiMap;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerRequest;
@@ -81,7 +81,15 @@ public class FormLoginHandlerImpl extends io.vertx.ext.web.handler.impl.FormLogi
                 context.fail(400);
             } else {
                 Session session = context.session();
-                JsonObject authInfo = new JsonObject().put("username", username).put("password", password).put(OAuth2Constants.CLIENT_ID, clientId);
+
+                // build authentication object with ip address and user agent
+                JsonObject authInfo = new JsonObject()
+                        .put("username", username)
+                        .put("password", password)
+                        .put("ipAddress", getClientIp(req))
+                        .put("userAgent", getUserAgent(req))
+                        .put(OAuth2Constants.CLIENT_ID, clientId);
+
                 authProvider.authenticate(authInfo, res -> {
                     if (res.succeeded()) {
                         User user = res.result();
@@ -132,5 +140,21 @@ public class FormLoginHandlerImpl extends io.vertx.ext.web.handler.impl.FormLogi
 
     private void doRedirect(HttpServerResponse response, String url) {
         response.putHeader(HttpHeaders.LOCATION, url).setStatusCode(302).end();
+    }
+
+    private String getClientIp(HttpServerRequest request) {
+        String remoteAddress = null;
+
+        if (request != null) {
+            remoteAddress = request.getHeader(HttpHeaders.X_FORWARDED_HOST);
+            if (remoteAddress == null || remoteAddress.isEmpty()) {
+                remoteAddress = request.remoteAddress().host();
+            }
+        }
+        return remoteAddress;
+    }
+
+    private String getUserAgent(HttpServerRequest request) {
+        return request.getHeader(HttpHeaders.USER_AGENT);
     }
 }

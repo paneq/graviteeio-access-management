@@ -15,8 +15,14 @@
  */
 package io.gravitee.am.gateway.handler.vertx.handler.root.endpoint.logout;
 
+import io.gravitee.am.model.Domain;
+import io.gravitee.am.model.User;
+import io.gravitee.am.service.AuditService;
+import io.gravitee.am.service.reporter.builder.AuditBuilder;
+import io.gravitee.am.service.reporter.builder.LogoutAuditBuilder;
 import io.gravitee.common.http.HttpHeaders;
 import io.vertx.core.Handler;
+import io.vertx.reactivex.core.http.HttpServerRequest;
 import io.vertx.reactivex.ext.web.RoutingContext;
 
 /**
@@ -27,11 +33,25 @@ public class LogoutEndpointHandler implements Handler<RoutingContext> {
 
     private static final String LOGOUT_URL_PARAMETER = "target_url";
     private static final String DEFAULT_TARGET_URL = "/";
+    private AuditService auditService;
+    private Domain domain;
+
+    public LogoutEndpointHandler(Domain domain, AuditService auditService) {
+        this.domain = domain;
+        this.auditService = auditService;
+    }
 
     @Override
     public void handle(RoutingContext routingContext) {
         // clear context and session
-        routingContext.clearUser();
+        if (routingContext.user() != null) {
+            io.gravitee.am.model.User endUser = ((io.gravitee.am.gateway.handler.vertx.auth.user.User) routingContext.user().getDelegate()).getUser();
+            // audit event
+            report(endUser, routingContext.request());
+            // clear user
+            routingContext.clearUser();
+        }
+
         if (routingContext.session() != null) {
             routingContext.session().destroy();
         }
@@ -45,7 +65,27 @@ public class LogoutEndpointHandler implements Handler<RoutingContext> {
                 .end();
     }
 
-    public static LogoutEndpointHandler create() {
-        return new LogoutEndpointHandler();
+    public static LogoutEndpointHandler create(Domain domain, AuditService auditService) {
+        return new LogoutEndpointHandler(domain, auditService);
+    }
+
+    private void report(User endUser, HttpServerRequest request) {
+        auditService.report(AuditBuilder.builder(LogoutAuditBuilder.class).domain(domain.getId()).user(endUser).ipAddress(getClientIp(request)).userAgent(getUserAgent(request)));
+    }
+
+    private String getClientIp(HttpServerRequest request) {
+        String remoteAddress = null;
+
+        if (request != null) {
+            remoteAddress = request.getHeader(HttpHeaders.X_FORWARDED_HOST);
+            if (remoteAddress == null || remoteAddress.isEmpty()) {
+                remoteAddress = request.remoteAddress().host();
+            }
+        }
+        return remoteAddress;
+    }
+
+    private String getUserAgent(HttpServerRequest request) {
+        return request.getHeader(HttpHeaders.USER_AGENT);
     }
 }
